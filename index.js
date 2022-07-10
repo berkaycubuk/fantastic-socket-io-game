@@ -18,7 +18,10 @@ let gameMap = [
     [0,0,0,0,0,0,0,0,0,0],
 ];
 
+let entities = {};
+
 let players = {};
+let playerIds = [];
 let objects = {
     0: {
         type: 'tree',
@@ -37,7 +40,9 @@ let objects = {
     },
 };
 let lastId = 0;
+let lastSide = 'red';
 let lastObjectId = 0;
+let lastEntityId = 0;
 
 app.use(express.static('static'));
 
@@ -47,7 +52,22 @@ app.get('/', (req, res) => {
 
 io.on('connection', (socket) => {
     lastId += 1;
-    players[socket.id] = {id: lastId, x: 0, y: 0, color: 'blue', animationKey: 'idle_6'};
+    if (lastSide == 'red') {
+        lastSide = 'blue';
+    } else {
+        lastSide = 'red';
+    }
+
+    players[socket.id] = {
+        id: lastId,
+        x: 0, y: 0,
+        color: 'blue',
+        side: lastSide,
+        entities: []
+    };
+
+    playerIds.push(socket.id);
+
     io.to(socket.id).emit('set id', lastId);
     io.emit('chat message', {
         from: "System",
@@ -56,16 +76,24 @@ io.on('connection', (socket) => {
     io.emit('map', gameMap);
     io.emit('players', players);
     io.emit('objects', objects);
+    io.emit('entities', entities);
 
     socket.on('chat message', (data) => {
         io.emit('chat message', data);
     });
 
-    socket.on('player move', (data) => {
-        players[data.id].x = data.x;
-        players[data.id].y = data.y;
-        players[data.id].animationKey = data.animationKey;
+    socket.on('new entity', (data) => {
+        lastEntityId += 1;
 
+        if (players[socket.id].side == 'blue') {
+            entities[lastEntityId] = {x: 20, y: 400, type: 'soldier', from: data.from, side: 'blue', state: 'walking'};
+        } else {
+            entities[lastEntityId] = {x: 760, y: 400, type: 'soldier', from: data.from, side: 'red', state: 'walking'};
+        }
+
+        players[socket.id].entities.push(lastEntityId);
+
+        io.emit('entities', entities);
         io.emit('players', players);
     });
 
@@ -78,6 +106,34 @@ io.on('connection', (socket) => {
         io.emit('players', players);
     });
 });
+
+setInterval(function() {
+    for (let key in entities) {
+        let entity = entities[key];
+        if (entity.state != 'walking') continue;
+        
+        if (entity.side == 'blue') {
+            entities[key].x += 10;
+        } else {
+            entities[key].x -= 10;
+        }
+    }
+
+    // collision detection
+    if (playerIds.length >= 2 && players[playerIds[0]].entities.length && players[playerIds[1]].entities.length) {
+        let entityA = entities[players[playerIds[0]].entities[0]];
+        let entityB = entities[players[playerIds[1]].entities[0]];
+
+        let diff = entityA.x - entityB.x;
+
+        if (diff >= -20 && diff <= 20) {
+            entityA.state = 'fighting';
+            entityB.state = 'fighting';
+        }
+    }
+
+    io.emit('entities', entities);
+}, 200);
 
 server.listen(3000, () => {
     console.log('listening on port 3000');

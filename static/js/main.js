@@ -1,5 +1,7 @@
 var socket = io();
 
+let music = new Audio('/sound/bg.mp3');
+
 var messages = document.getElementById('messages');
 var form = document.getElementById('form');
 var input = document.getElementById('input');
@@ -46,7 +48,7 @@ var ctx = canvas.getContext('2d');
 class GameMap {
     mapData;
     blockSize = 60;
-    
+
     constructor(mapData) {
         this.mapData = mapData;
     }
@@ -66,6 +68,20 @@ class GameMap {
                 }
                 ctx.drawImage(image, this.blockSize * x, this.blockSize * y, this.blockSize, this.blockSize);
             }
+        }
+    }
+}
+
+class EntitiesManager {
+    entities = {};
+
+    update(entities) {
+        this.entities = entities;
+    }
+
+    draw() {
+        for (let key in this.entities) {
+            drawEntity(this.entities[key]);
         }
     }
 }
@@ -99,6 +115,16 @@ class PlayersManager {
     }
 }
 
+function drawEntity(entity) {
+    if (entity.side == 'blue') {
+        ctx.fillStyle = 'blue';
+    } else {
+        ctx.fillStyle = 'red';
+    }
+
+    ctx.fillRect(entity.x, entity.y, 20, 20);
+}
+
 function drawObject(object) {
     let image = new Image();
 
@@ -125,6 +151,7 @@ function drawPlayer(player) {
 let currentMap = new GameMap(gameMap);
 let playersManager = new PlayersManager();
 let objectsManager = new ObjectsManager();
+let entitiesManager = new EntitiesManager();
 
 socket.on('map', function(newMap) {
     currentMap.mapData = newMap;
@@ -138,35 +165,25 @@ socket.on('objects', function(objects) {
     objectsManager.objects = objects;
 });
 
+socket.on('entities', function(entities) {
+    entitiesManager.update(entities);
+});
+
 function animationLoop() {
     ctx.clearRect(0, 0, 800, 600);
-    currentMap.draw();
-    objectsManager.draw();
-    playersManager.draw();
+    //currentMap.draw();
+    //objectsManager.draw();
+    //playersManager.draw();
+    entitiesManager.draw();
     window.requestAnimationFrame(animationLoop);
 }
 
-document.addEventListener('keypress', function(e) {
-    switch(e.code) {
-        case 'KeyA':
-            player.x -= 10;
-            player.animationKey = 'idle_4';
-            break;
-        case 'KeyD':
-            player.x += 10;
-            player.animationKey = 'idle_0';
-            break;
-        case 'KeyW':
-            player.y -= 10;
-            player.animationKey = 'idle_2';
-            break;
-        case 'KeyS':
-            player.y += 10;
-            player.animationKey = 'idle_6';
-            break;
-    }
-
-    socket.emit('player move', {id: socket.id, x: player.x, y: player.y, animationKey: player.animationKey});
-});
-
 animationLoop();
+
+function buildSoldier() {
+    socket.emit('new entity', {
+        from: playerId,
+        entity: 'soldier'
+    });
+}
+
