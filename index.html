@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Fantastic</title>
+        <link rel="stylesheet" type="text/css" href="/css/styles.css" />
+    </head>
+    <body>
+        <canvas id="canvas" width="800" height="600"></canvas>
+        <div class="game-chat">
+            <ul id="messages" class="game-chat-messages"></ul>
+            <form id="form" action="">
+                <div class="game-chat-input-wrapper">
+                    <label>Message:</label>
+                    <input class="game-chat-input" id="input" autocomplete="off" />
+                    <button>Send</button>
+                </div>
+            </form>
+        </div>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="/js/main.js"></script>
+    </body>
+</html>
+
